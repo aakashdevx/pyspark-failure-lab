@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+*.so
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Conda / virtualenv
+.env
+.venv
+env/
+
+# Spark / data artifacts
+data/output/*
+data/checkpoints/*
+*.parquet
+*.orc
+spark-warehouse/
+derby.log
+metastore_db/
+
+# Docker
+.docker/
+
+# VS Code
+.vscode/settings.json
+.vscode/launch.json
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Logs
+logs/
+*.log
