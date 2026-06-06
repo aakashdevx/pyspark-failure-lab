@@ -1,5 +1,5 @@
 """
-Phase 1 Validation Script
+Phase 1 Validation Script — v2 (fixed delta version check)
 Run with: python scripts/validate_phase1.py
 All checks must pass before confirming Phase 1 complete.
 """
@@ -16,6 +16,20 @@ def check(label, condition, detail=""):
     results.append((status, label, detail))
     print(f"{status} | {label}" + (f" | {detail}" if detail else ""))
 
+def get_pip_version(package_name):
+    """Reliably get installed package version via pip show."""
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "show", package_name],
+            capture_output=True, text=True, timeout=15
+        )
+        for line in result.stdout.splitlines():
+            if line.startswith("Version:"):
+                return line.split(":", 1)[1].strip()
+    except Exception:
+        pass
+    return None
+
 print("\n=== Phase 1 Validation ===\n")
 
 # Check 1: Python version
@@ -28,18 +42,24 @@ check("Python version is 3.11.x",
 try:
     import pyspark
     check("PySpark importable", True, f"version: {pyspark.__version__}")
-    check("PySpark version is 3.5.3", pyspark.__version__ == "3.5.3", pyspark.__version__)
+    check("PySpark version is 3.5.3",
+          pyspark.__version__ == "3.5.3", pyspark.__version__)
 except ImportError as e:
     check("PySpark importable", False, str(e))
     check("PySpark version is 3.5.3", False, "not installed")
 
-# Check 3: Delta importable
+# Check 3: Delta importable — use pip show for version (delta module
+#           does not expose __version__ as a top-level attribute)
 try:
-    import delta
-    check("Delta-spark importable", True, f"version: {delta.__version__}")
-    check("Delta version is 3.2.1", delta.__version__ == "3.2.1", delta.__version__)
+    import delta  # noqa: F401 — just checking importability
+    check("Delta-spark importable", True)
+    delta_version = get_pip_version("delta-spark")
+    check("Delta-spark version is 3.2.1",
+          delta_version == "3.2.1",
+          f"installed: {delta_version}")
 except ImportError as e:
     check("Delta-spark importable", False, str(e))
+    check("Delta-spark version is 3.2.1", False, "not installed")
 
 # Check 4: pytest importable
 try:
@@ -78,11 +98,14 @@ for f in required_files:
 
 # Check 8: Docker CLI reachable
 try:
-    result = subprocess.run(["docker", "info", "--format", "{{.ServerVersion}}"],
-                            capture_output=True, text=True, timeout=10)
+    result = subprocess.run(
+        ["docker", "info", "--format", "{{.ServerVersion}}"],
+        capture_output=True, text=True, timeout=10
+    )
     docker_ok = result.returncode == 0 and len(result.stdout.strip()) > 0
     check("Docker daemon reachable", docker_ok,
-          f"version: {result.stdout.strip()}" if docker_ok else result.stderr.strip())
+          f"version: {result.stdout.strip()}" if docker_ok
+          else result.stderr.strip())
 except Exception as e:
     check("Docker daemon reachable", False, str(e))
 
@@ -94,7 +117,7 @@ check("Git repository initialized", os.path.isdir(git_dir))
 print("\n=== Summary ===")
 passed = sum(1 for s, _, _ in results if s == PASS)
 failed = sum(1 for s, _, _ in results if s == FAIL)
-total = len(results)
+total  = len(results)
 print(f"Passed: {passed}/{total}")
 print(f"Failed: {failed}/{total}")
 if failed == 0:
