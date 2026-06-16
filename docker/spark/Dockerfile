@@ -49,6 +49,20 @@ RUN curl -fsSL \
     && mv /opt/spark-${SPARK_VERSION}-bin-hadoop3 ${SPARK_HOME} \
     && rm /tmp/spark.tgz
 
+# ── Add S3A connectivity JARs ──────────────────────────────────
+# Spark's hadoop3 binary distribution does NOT bundle hadoop-aws
+# or the AWS SDK. Required for s3a:// (MinIO) connectivity.
+# Version 3.3.4 matches hadoop-client-api/runtime already bundled
+# in Spark 3.5.3 — confirmed via: ls /opt/spark/jars | grep hadoop-client
+ENV HADOOP_AWS_VERSION=3.3.4
+ENV AWS_SDK_BUNDLE_VERSION=1.12.367
+RUN curl -fsSL \
+    "https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/${HADOOP_AWS_VERSION}/hadoop-aws-${HADOOP_AWS_VERSION}.jar" \
+    -o ${SPARK_HOME}/jars/hadoop-aws-${HADOOP_AWS_VERSION}.jar \
+    && curl -fsSL \
+    "https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/${AWS_SDK_BUNDLE_VERSION}/aws-java-sdk-bundle-${AWS_SDK_BUNDLE_VERSION}.jar" \
+    -o ${SPARK_HOME}/jars/aws-java-sdk-bundle-${AWS_SDK_BUNDLE_VERSION}.jar
+
 # ── Create required directories ───────────────────────────────────
 RUN mkdir -p \
     ${SPARK_CONF_DIR} \

@@ -41,3 +41,11 @@ metastore_db/
 # Logs
 logs/
 *.log
+.env
+
+# PyCharm IDE files
+.idea/
+*.iml
+
+#git
+.gitignore
