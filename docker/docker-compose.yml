@@ -117,9 +117,85 @@ services:
       retries: 5
       start_period: 40s
 
+# ── MinIO — S3-compatible object store ──────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    hostname: minio
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin123
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    mem_limit: 512m
+    cpus: 0.5
+    networks:
+      - spark-lab-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # ── MinIO setup — creates buckets on first run ───────────────────
+  minio-setup:
+    image: minio/mc:latest
+    container_name: minio-setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - spark-lab-net
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin123;
+      mc mb --ignore-existing local/spark-warehouse;
+      mc mb --ignore-existing local/spark-logs;
+      mc mb --ignore-existing local/delta-tables;
+      echo 'Buckets created successfully';
+      exit 0;
+      "
+
+# ── Hive Metastore ─────────────────────────────────────────────
+  hive-metastore:
+    build:
+      context: ./hive-metastore
+      dockerfile: Dockerfile
+    image: pyspark-failure-lab-hive:3.0.0
+    container_name: hive-metastore
+    hostname: hive-metastore
+    environment:
+      - METASTORE_PORT=9083
+    ports:
+      - "9083:9083"
+    volumes:
+      - hive-metastore-db:/opt/hive-metastore/data
+    mem_limit: 1g
+    cpus: 0.5
+    depends_on:
+      minio-setup:
+        condition: service_completed_successfully
+    networks:
+      - spark-lab-net
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9083"]
+      interval: 15s
+      timeout: 10s
+      retries: 6
+      start_period: 60s
+
 # ── Volumes ────────────────────────────────────────────────────────
 volumes:
   spark-events:
+    driver: local
+  minio-data:
+    driver: local
+  hive-metastore-db:
     driver: local
 
 # ── Networks ───────────────────────────────────────────────────────
