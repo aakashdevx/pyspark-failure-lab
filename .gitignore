@@ -25,6 +25,8 @@ data/checkpoints/*
 spark-warehouse/
 derby.log
 metastore_db/
+*.csv
+*.json
 
 # Docker
 .docker/
