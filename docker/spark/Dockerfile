@@ -63,6 +63,19 @@ RUN curl -fsSL \
     "https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/${AWS_SDK_BUNDLE_VERSION}/aws-java-sdk-bundle-${AWS_SDK_BUNDLE_VERSION}.jar" \
     -o ${SPARK_HOME}/jars/aws-java-sdk-bundle-${AWS_SDK_BUNDLE_VERSION}.jar
 
+# ── Add Delta Lake JARs ─────────────────────────────────────────
+# delta-spark: core Delta Lake library
+# delta-storage: storage abstraction layer Delta depends on
+# Scala 2.12 suffix matches Spark 3.5.3's Scala build version
+# (confirmed via spark-examples_2.12-3.5.3.jar filename)
+ENV DELTA_VERSION=3.2.1
+RUN curl -fsSL \
+    "https://repo1.maven.org/maven2/io/delta/delta-spark_2.12/${DELTA_VERSION}/delta-spark_2.12-${DELTA_VERSION}.jar" \
+    -o ${SPARK_HOME}/jars/delta-spark_2.12-${DELTA_VERSION}.jar \
+    && curl -fsSL \
+    "https://repo1.maven.org/maven2/io/delta/delta-storage/${DELTA_VERSION}/delta-storage-${DELTA_VERSION}.jar" \
+    -o ${SPARK_HOME}/jars/delta-storage-${DELTA_VERSION}.jar
+
 # ── Create required directories ───────────────────────────────────
 RUN mkdir -p \
     ${SPARK_CONF_DIR} \
